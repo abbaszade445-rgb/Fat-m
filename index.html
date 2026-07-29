@@ -103,24 +103,22 @@
         ctx.drawImage(glowCanvas, dot.x - s/2, dot.y - s/2, s, s);
       }
 
-      const fontSize = Math.min(W, H) * 0.072;
-
-ctx.globalAlpha = alpha * eased;
-ctx.textAlign = 'center';
-ctx.textBaseline = 'middle';
-ctx.shadowColor = '#FF2D78';
-ctx.fillStyle = '#FFFFFF';
-
-// SƏNİ SEVİRƏM (bir az yuxarı)
-ctx.shadowBlur = 24;
-ctx.font = `bold ${fontSize}px Georgia, serif`;
-ctx.fillText('SƏNİ SEVİRƏM', W / 2, H / 2 - fontSize * 0.35);
-
-// FATI (altında)
-ctx.font = `italic bold ${fontSize * 0.75}px Georgia, serif`;
-ctx.fillText('Fatı', W / 2, H / 2 + fontSize * 0.75);
-
-ctx.shadowBlur = 0;
+      // SƏNİ SEVİRƏM - ürək tamamlandıqdan sonra görünür
+      if (cycleTime > DRAW_DURATION) {
+        const p = Math.min(1, (cycleTime - DRAW_DURATION) / 800);
+        const eased = 1 - (1 - p) * (1 - p);
+        const fontSize = Math.min(W, H) * 0.072;
+        ctx.globalAlpha = alpha * eased;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = '#FF2D78';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.shadowBlur = 24;
+        ctx.font = `bold ${fontSize}px Georgia, serif`;
+        ctx.fillText('SƏNİ SEVİRƏM', W / 2, H / 2 - fontSize * 0.45);
+        ctx.font = `italic bold ${fontSize * 0.75}px Georgia, serif`;
+        ctx.fillText('Fatı', W / 2, H / 2 + fontSize * 0.65);
+        ctx.shadowBlur = 0;
       }
     }
     requestAnimationFrame(render);
