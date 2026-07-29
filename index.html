@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8" />
+  <title>Səni Sevirəm</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 100vw; height: 100vh; background: #000; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+
+  const DRAW_DURATION  = 6000;
+  const HOLD_DURATION  = 2500;
+  const FADE_DURATION  = 1500;
+  const DELAY_DURATION = 1000;
+  const TOTAL_CYCLE    = DRAW_DURATION + HOLD_DURATION + FADE_DURATION + DELAY_DURATION;
+
+  const gridSpacing = 8, dotSize = 1.5, dotBlur = 10, dotColor = '#FF2D78';
+  let allDots = [], glowCanvas, glowSize;
+
+  function generateDots() {
+    const dpr = window.devicePixelRatio || 1;
+    const W = window.innerWidth, H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.scale(dpr, dpr);
+
+    const off = document.createElement('canvas');
+    off.width = W; off.height = H;
+    const octx = off.getContext('2d', { willReadFrequently: true });
+    octx.fillStyle = 'white';
+    const heartScale = Math.min((W * 0.85) / 32, (H * 0.85) / 30, 28);
+    octx.save();
+    octx.translate(W / 2, H / 2 - 2.5 * heartScale);
+    octx.scale(heartScale, -heartScale);
+    octx.beginPath();
+    for (let t = 0; t <= Math.PI * 2; t += 0.005) {
+      const x = 16 * Math.pow(Math.sin(t), 3);
+      const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+      t === 0 ? octx.moveTo(x, y) : octx.lineTo(x, y);
+    }
+    octx.closePath(); octx.fill(); octx.restore();
+
+    const data = octx.getImageData(0, 0, W, H).data;
+    const dots = [];
+    for (let y = 0; y < H; y += gridSpacing)
+      for (let x = 0; x < W; x += gridSpacing)
+        if (data[(y * W + x) * 4 + 3] > 128)
+          dots.push({ x, y, appearTime: 0 });
+
+    dots.forEach((d, i) => d.appearTime = (i / dots.length) * DRAW_DURATION);
+    allDots = dots;
+  }
+
+  function createGlow() {
+    const dpr = window.devicePixelRatio || 1;
+    const c = document.createElement('canvas');
+    const size = dotSize * dpr, blur = dotBlur * dpr, pad = blur * 2;
+    c.width = c.height = size * 2 + pad * 2;
+    const dc = c.getContext('2d');
+    dc.shadowBlur = blur; dc.shadowColor = dotColor; dc.fillStyle = dotColor;
+    dc.beginPath(); dc.arc(c.width/2, c.height/2, size, 0, Math.PI*2); dc.fill();
+    dc.shadowBlur = 0; dc.fillStyle = '#fff';
+    dc.beginPath(); dc.arc(c.width/2, c.height/2, size * 0.4, 0, Math.PI*2); dc.fill();
+    glowCanvas = c; glowSize = c.width / dpr;
+  }
+
+  generateDots(); createGlow();
+  window.addEventListener('resize', () => { generateDots(); createGlow(); });
+
+  let startTime = null;
+  function render(time) {
+    if (!startTime) startTime = time;
+    const cycleTime = (time - startTime) % TOTAL_CYCLE;
+    const W = window.innerWidth, H = window.innerHeight;
+
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+
+    let alpha = 1;
+    if (cycleTime > DRAW_DURATION + HOLD_DURATION) {
+      const fe = cycleTime - DRAW_DURATION - HOLD_DURATION;
+      alpha = fe < FADE_DURATION ? 1 - fe / FADE_DURATION : 0;
+    }
+
+    if (alpha > 0) {
+      ctx.globalAlpha = alpha;
+
+      for (let i = 0; i < allDots.length; i++) {
+        const dot = allDots[i];
+        if (cycleTime < dot.appearTime) break;
+        const age = cycleTime - dot.appearTime;
+        let scale = 1;
+        if (age < 600) {
+          const p = age / 600;
+          scale = p < 0.2 ? Math.max(0.01, (p/0.2)*2.2)
+                          : 2.2 - 1.2*(1-(1-(p-0.2)/0.8)**2);
+        }
+        const s = glowSize * scale;
+        ctx.drawImage(glowCanvas, dot.x - s/2, dot.y - s/2, s, s);
+      }
+
+      // SƏNİ SEVİRƏM - ürək tamamlandıqdan sonra görünür
+      if (cycleTime > DRAW_DURATION) {
+        const p = Math.min(1, (cycleTime - DRAW_DURATION) / 800);
+        const eased = 1 - (1 - p) * (1 - p);
+        const fontSize = Math.min(W, H) * 0.072;
+        ctx.globalAlpha = alpha * eased;
+        ctx.font = `bold ${fontSize}px Georgia, serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowBlur = 24;
+        ctx.shadowColor = '#FF2D78';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('SƏNİ SEVİRƏM', W / 2, H / 2 + fontSize * 0.1);
+        ctx.shadowBlur = 0;
+      }
+    }
+    requestAnimationFrame(render);
+  }
+  requestAnimationFrame(render);
+</script>
+</body>
+</html>
